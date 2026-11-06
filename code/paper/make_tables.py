@@ -60,7 +60,7 @@ def csvrow(f, task, model, col="AUC"):
 
 # ---------------------------------------------------------------- Table 1
 T1 = pd.DataFrame([
-    ["REHAB24-6", "2024", "10 (0/10)ᵃ", "2 RGB cameras + optical mocap", "Arm abduction, arm V-W (RGB); 6 exercises (mocap)", "1,072 reps (386 arm RGB; 1,057 valid mocap)", "Binary", "Deliberate", "Correct block, then incorrect block (in annotations; not stated in paper)"],
+    ["REHAB24-6", "2024", "10 (0/10)ᵃ", "2 RGB cameras + optical mocap", "Arm abduction, arm V-W (RGB); 6 exercises (mocap)", "1,072 reps in total; we used 386 arm reps (RGB) and 1,057 reps with valid mocap", "Binary", "Deliberate", "Correct block, then incorrect block (in annotations; not stated in paper)"],
     ["REHAB26-ViewAngles", "2026", "5 (volunteers)", "3 RGB cameras (MediaPipe pose)", "Arm abduction, squat, shoulder extension", "1,665 reps (1,650 in paper); one camera view per repetition", "Binary + error type", "Deliberate", "Interleaved, but 152 of the 165 sets (all with 10 reps) follow the same order: 3 correct, 5 incorrect, 2 correct"],
     ["UI-PRMD", "2018", "10 (0/10)", "Vicon (39 markers) + Kinect", "4 shoulder movements (of 10)", "800 episodes (Vicon)", "Binary", "Deliberately non-optimal", "Correct and incorrect released as separate sets; session order not reported"],
     ["IntelliRehabDS", "2021", "29 (15/14)ᵇ", "Kinect One (v2)", "9 upper/lower-limb gestures", "2,589 files (2,575 used: 12 unusable and 2 shorter than 16 frames removed)", "Binary (+12 unusable)", "Natural", "98% of incorrect sequences from patients"],
@@ -109,10 +109,12 @@ T2 = pd.DataFrame([
     ["IntelliRehabDS", "Patient status", ci(get("irds", None, "person", "(patient label only)")),
      ci(best("irds", None)),
      "Patients only " + ci(best("irds", None, "person", "patients only")) + irds_gain +
+     "; LITEMV (Rehab-Pile) " + "%.2f" % get("irds_litemv", None, "person", "litemv")[0] +
      f"; correct reps called incorrect: patients {fa[('lstm', 1)]:.0f}–{fa[('stgcn', 1)]:.0f}%, healthy {fa[('lstm', 0)]:.0f}–{fa[('stgcn', 0)]:.0f}%",
      ci(best("irds", None, "random"))],
     ["KIMORE (ρ)", "Patient status", rng(k_lab), rng(k_all),
-     "Patients only " + rng(k_pat) + ("; partial ρ given patient status " + rng(k_part) if k_part else ""), "n/a (1 rec./person)"],
+     "Patients only " + rng(k_pat) + ("; partial ρ given patient status " + rng(k_part) if k_part else "") +
+     "; LITEMV (Rehab-Pile) " + rng([get("kimore_litemv", e, "person", "litemv") for e in range(1, 6)]), "n/a (1 rec./person)"],
     ["KERAAL", "Recording group", rng([csvrow("shortcuts_keraal.csv", t, "group label only") for t in ("CTK", "ELK", "RTK")]) if os.path.exists(os.path.join(OUT, "shortcuts_keraal.csv")) else "0.54–0.66",
      rng([best("keraal", t) for t in ("CTK", "ELK", "RTK")]),
      "Simulating group only " + rng([best("keraal", t, "person", "simulating group only (P)") for t in ("CTK", "ELK", "RTK")]) +
@@ -137,20 +139,23 @@ T3 = pd.DataFrame([
 
 # ---------------------------------------------------------------- Table 4
 T4 = pd.DataFrame([
-    ["Population (patient status)", "IntelliRehabDS, KIMORE, (KERAAL)", "Strong", "Report a patient-status-only baseline; evaluate on patients only; report false-alarm rate on correct reps by group",
+    ["Population (patient status)", "IntelliRehabDS (KERAAL: weak)", "Strong: probe 0.84, close to the models; correct reps called incorrect 14–18% (patients) vs 1–3% (healthy)",
+     "Report a patient-status-only baseline, results on patients only, results conditioned on patient status, and false alarms on correct reps by group",
      "Record correct and incorrect reps from patients; record healthy errors"],
-    ["Recording session", "UI-PRMD", "Strong under random / within-person splits", "Person-wise splits only; probe with movement-uninvolved body parts; permutation control",
+    ["Group-linked clinical score", "KIMORE", "Patients really score lower; patient status alone (ρ 0.55–0.66) matches the models in 3 of 5 exercises",
+     "Report the partial correlation given patient status and results on patients only", "Record the full score range inside each group; release the group"],
+    ["Recording session", "UI-PRMD", "Strong inside each person (0.92–0.99); weak across people (0.61–0.69)", "Person-wise splits only; probe with movement-uninvolved body parts; permutation control",
      "Record correct and incorrect reps in the same session without re-applying markers"],
-    ["Label order (block design)", "REHAB24-6, REHAB26", "Large in labels; small for single-rep models", "Report a rep-index-only baseline; avoid context windows that cross repetitions",
-     "Randomize the order of correct and incorrect repetitions"],
+    ["Label order (block design)", "REHAB26, REHAB24-6", "REHAB26: probe 0.98–0.99, used a little by context models (+0.04–0.12); REHAB24-6: design risk only",
+     "Report a rep-index-only baseline; avoid context windows that cross repetitions", "Randomize the order of correct and incorrect repetitions"],
     ["Simulated vs natural errors", "KERAAL, (UI-PRMD, REHAB24-6/26, UCDHE)", "Moderate", "Report performance on natural (patient) errors separately",
      "Include natural errors from the target population"],
     ["Subject leakage (random split)", "All multi-rep datasets incl. UCDHE", "+0.05 to +0.32 AUC", "Person-wise (grouped) cross-validation with person-level CIs",
      "Release person IDs, group, order and session metadata"],
     ["Repetition duration", "IntelliRehabDS (REHAB24-6: not consistent)", "Moderate in IntelliRehabDS (0.70); REHAB24-6 0.35 and 0.57, direction differs between people", "Report a duration-only baseline; exclude or justify duration features", "—"],
-], columns=["Shortcut", "Datasets", "Strength", "Evaluation recommendation", "Data-collection recommendation"])
+], columns=["Shortcut", "Datasets", "Strength under person-wise evaluation", "Evaluation recommendation", "Data-collection recommendation"])
 
-TABLES = [("table1_datasets", "Table 1. Datasets and recording designs relevant to shortcuts. Facts checked against the original papers and dataset records. "
+TABLES = [("table1_datasets", "Table 1. Datasets and recording designs relevant to shortcuts (six audited datasets and one control). Facts checked against the original papers and dataset records. "
            "ᵃHealthy (some with past injuries, none acute); 9 people have arm-exercise data. "
            "ᵇThe release also contains patient 217, excluded by the authors (recording stopped); our analysis keeps it (61 sequences; removing it changes AUCs by ≤0.01). "
            "ᶜ12 expert + 32 non-expert healthy; 10 stroke, 16 Parkinson, 8 back pain; 77 have usable data. "

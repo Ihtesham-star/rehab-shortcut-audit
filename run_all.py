@@ -17,7 +17,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 CODE = os.path.join(HERE, "code")
 DEEP = ["rehab24_cam", "rehab24_mocap", "rehab26_single", "rehab26_context", "rehab26_random", "irds", "irds_patients",
-        "irds_balanced", "irds_reweigh", "uiprmd_full", "uiprmd_lower", "kimore", "keraal", "keraal_patients", "ucdhe"]
+        "irds_balanced", "irds_reweigh", "irds_gdro", "uiprmd_full", "uiprmd_lower", "kimore", "keraal", "keraal_patients", "ucdhe"]
 
 STEPS = [
     ("facts", ["dataset_facts.py"]),
@@ -32,6 +32,7 @@ STEPS = [
     ("probes_keraal", ["keraal_probe.py"]),
     ("controls", ["controls.py", "uiprmd_perm", "kimore_take", "context"]),
     ("deep", None),
+    ("litemv", ["deep/run_litemv.py", "irds", "kimore"]),   # needs TensorFlow + the Rehab-Pile code (see README)
     ("summary", ["deep/summarize.py"]),
     ("conditional", ["conditional_checks.py"]),
     ("figures", ["paper/make_figures.py"]),
@@ -51,6 +52,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-deep", action="store_true")
     ap.add_argument("--quick-deep", action="store_true")
+    ap.add_argument("--skip-litemv", action="store_true", help="skip the Rehab-Pile LITEMV baseline")
     ap.add_argument("--skip-mediapipe", action="store_true", help="reuse results/mediapipe")
     ap.add_argument("--only", nargs="*", help="run only these steps")
     a = ap.parse_args()
@@ -62,6 +64,8 @@ def main():
         if a.only and name not in a.only:
             continue
         if name == "mediapipe" and a.skip_mediapipe:
+            continue
+        if name == "litemv" and (a.skip_deep or a.skip_litemv):
             continue
         if name == "deep":
             if a.skip_deep:

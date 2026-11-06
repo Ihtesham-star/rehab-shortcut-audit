@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from paths import OUT  # noqa: E402
 from strict import auc, cluster_ci, rho  # noqa: E402
-from paths import DATA, OUT  # noqa: E402
 
 OUT = os.path.join(OUT, "deep")
 
@@ -39,30 +39,31 @@ def main():
                 for half, m in (("first half of video", g.rep_position <= 0.5), ("second half", g.rep_position > 0.5)):
                     add(experiment=name, task=task, protocol=prot, arch=arch, subset=half, metric="AUC",
                         value=f(auc, g.y[m], g.pred[m], g.person[m]))
-    for name in ("irds", "irds_patients", "irds_balanced", "irds_reweigh"):
+    for name in ("irds", "irds_patients", "irds_balanced", "irds_reweigh", "irds_gdro", "irds_litemv"):
         d = load(name)
         if d is None:
             continue
         for (prot, arch), g in d.groupby(["protocol", "arch"]):
             add(experiment=name, task="9 gestures pooled", protocol=prot, arch=arch, subset="all", metric="AUC",
                 value=f(auc, g.y, g.pred, g.person))
-            if name in ("irds", "irds_balanced", "irds_reweigh"):
+            if name in ("irds", "irds_balanced", "irds_reweigh", "irds_gdro", "irds_litemv"):
                 m = g.patient == 1
                 add(experiment=name, task="9 gestures pooled", protocol=prot, arch=arch, subset="patients only",
                     metric="AUC", value=f(auc, g.y[m], g.pred[m], g.person[m]))
                 add(experiment=name, task="9 gestures pooled", protocol=prot, arch="(patient label only)",
                     subset="all", metric="AUC", value=f(auc, g.y, -g.patient.astype(float), g.person))
-    d = load("kimore")
-    if d is not None:
-        for (task, prot, arch), g in d.groupby(["task", "protocol", "arch"]):
-            m = g.patient == 1
-            add(experiment="kimore", task=task, protocol=prot, arch=arch, subset="all", metric="rho",
-                value=f(rho, g.y, g.pred, g.person))
-            add(experiment="kimore", task=task, protocol=prot, arch=arch, subset="patients only", metric="rho",
-                value=f(rho, g.y[m], g.pred[m], g.person[m]))
-            if arch == "lstm" and prot == "person":
-                add(experiment="kimore", task=task, protocol=prot, arch="(patient label only)", subset="all",
-                    metric="rho", value=f(rho, g.y, -g.patient.astype(float), g.person))
+    for kname in ("kimore", "kimore_litemv"):
+      d = load(kname)
+      if d is not None:
+          for (task, prot, arch), g in d.groupby(["task", "protocol", "arch"]):
+              m = g.patient == 1
+              add(experiment=kname, task=task, protocol=prot, arch=arch, subset="all", metric="rho",
+                  value=f(rho, g.y, g.pred, g.person))
+              add(experiment=kname, task=task, protocol=prot, arch=arch, subset="patients only", metric="rho",
+                  value=f(rho, g.y[m], g.pred[m], g.person[m]))
+              if arch == "lstm" and prot == "person":
+                  add(experiment=kname, task=task, protocol=prot, arch="(patient label only)", subset="all",
+                      metric="rho", value=f(rho, g.y, -g.patient.astype(float), g.person))
     for name in ("keraal", "keraal_patients", "ucdhe"):
         d = load(name)
         if d is None:

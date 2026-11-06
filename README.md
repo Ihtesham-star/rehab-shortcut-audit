@@ -35,4 +35,12 @@ python run_all.py --skip-deep   # everything except training the deep models (st
 Results are written to `./results` (or `REHAB_OUT`): probe and control results as CSV files, out-of-fold
 predictions in `results/deep/`, and the figures and tables of the paper in `results/figures/` and `results/tables/`.
 
+The Rehab-Pile baseline (LITEMV) uses the authors' released code. Clone it next to the repo and install TensorFlow (`pip install tensorflow aeon==1.4.0`):
+
+```
+git clone https://github.com/MSD-IRIMAS/DeepRehabPile external/DeepRehabPile
+```
+
+Set `KERAS_BACKEND=torch` to train it on a GPU through Keras 3, or use `--skip-litemv`.
+
 Deep-model results can differ slightly between runs and GPUs. All other steps give the same numbers every time.

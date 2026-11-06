@@ -5,3 +5,4 @@ results_*/
 __pycache__/
 *.pyc
 .DS_Store
+external/

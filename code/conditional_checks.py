@@ -29,7 +29,6 @@ from paths import DATA, OUT  # noqa: E402
 
 warnings.filterwarnings("ignore")
 HERE = os.path.dirname(os.path.abspath(__file__))
-
 DEEP = os.path.join(OUT, "deep")
 N_BOOT = 1000
 
@@ -186,9 +185,30 @@ def rehab26_random():
             for (task, arch), g in d.groupby(["task", "arch"])]
 
 
+# ------------------------------------------------------------------ 6. IRDS false alarms at fixed thresholds
+def irds_thresholds():
+    """Share of correct repetitions called incorrect, by group, when the threshold is set so that a fixed share
+    (5% or 10%) of ALL correct repetitions is flagged. This removes the dependence on the 0.5 cut-off."""
+    rows = []
+    for exp in ("irds", "irds_balanced", "irds_reweigh", "irds_gdro"):
+        p = os.path.join(DEEP, exp + ".csv")
+        if not os.path.exists(p):
+            continue
+        d = pd.read_csv(p)
+        d = d[(d.protocol == "person") & (d.y == 1)]
+        for arch, g in d.groupby("arch"):
+            for share in (0.05, 0.10):
+                thr = np.quantile(g.pred, share)
+                rows.append(dict(dataset="IRDS", arch="%s (%s)" % (arch, exp),
+                                 test="false alarms when %d%% of all correct reps are flagged" % (100 * share),
+                                 value="healthy %.1f%%, patients %.1f%%" % (100 * (g[g.patient == 0].pred < thr).mean(),
+                                                                          100 * (g[g.patient == 1].pred < thr).mean())))
+    return rows
+
+
 def main(which):
     jobs = dict(irds=irds_conditional, decode=irds_patient_decoding, kimore=kimore_partial,
-                uiprmd=uiprmd_within_ci, rehab26=rehab26_random)
+                uiprmd=uiprmd_within_ci, rehab26=rehab26_random, thresholds=irds_thresholds)
     for name in which or list(jobs):
         rows = jobs[name]()
         res = pd.DataFrame(rows)

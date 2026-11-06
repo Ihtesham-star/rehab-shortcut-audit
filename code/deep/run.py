@@ -30,8 +30,11 @@ DEEP_OUT = os.path.join(OUT, "deep")
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def fit_predict(Xtr, ytr, Xte, kind, arch, epochs, seed, wtr=None):
-    """wtr: optional per-sample loss weights (mean 1)."""
+def fit_predict(Xtr, ytr, Xte, kind, arch, epochs, seed, wtr=None, gtr=None, eta=0.01):
+    """wtr: optional per-sample loss weights (mean 1).
+    gtr: optional group id per sample (0..G-1). If given, train with online group DRO (Sagawa et al., 2020):
+    keep a weight q_g per group, raise it for groups with high loss (q_g <- q_g * exp(eta * loss_g)) and
+    minimise the q-weighted group loss, so the worst group gets most attention."""
     torch.manual_seed(seed)
     np.random.seed(seed)
     J = Xtr.shape[2]
@@ -41,6 +44,10 @@ def fit_predict(Xtr, ytr, Xte, kind, arch, epochs, seed, wtr=None):
     yt = torch.tensor((ytr - mu) / sd, dtype=torch.float32)
     Xt = torch.tensor(Xtr)
     wt = torch.tensor(np.ones(len(Xtr)) if wtr is None else wtr, dtype=torch.float32)
+    if gtr is not None:
+        gt = torch.tensor(gtr, dtype=torch.long)
+        G = int(gt.max()) + 1
+        q = torch.ones(G, device=DEV) / G
     if kind == "clf":
         pos = max(ytr.mean(), 1e-3)
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((1 - pos) / pos, device=DEV), reduction="none")
@@ -58,7 +65,17 @@ def fit_predict(Xtr, ytr, Xte, kind, arch, epochs, seed, wtr=None):
                 continue
             xb = Xt[b].to(DEV)
             xb = xb * torch.empty(len(b), 1, 1, 1, device=DEV).uniform_(0.9, 1.1) + 0.01 * torch.randn_like(xb)
-            loss = (loss_fn(model(xb), yt[b].to(DEV)) * wt[b].to(DEV)).mean()
+            per = loss_fn(model(xb), yt[b].to(DEV)) * wt[b].to(DEV)
+            if gtr is None:
+                loss = per.mean()
+            else:
+                gb = gt[b].to(DEV)
+                present = torch.unique(gb)
+                gl = torch.stack([per[gb == g].mean() for g in present])
+                with torch.no_grad():
+                    q[present] = q[present] * torch.exp(eta * gl.detach())
+                    q /= q.sum()
+                loss = (q[present] * gl).sum() / q[present].sum()
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -122,12 +139,14 @@ def run(name, items, kind, protocols, archs, epochs, seeds, T=64, train_mask=Non
                     if kind == "clf" and len(np.unique(y[tr])) < 2:
                         pred[te] = np.nan
                         continue
-                    w = None
+                    w, gid = None, None
+                    if name.endswith("_gdro"):  # groups = patient status x label
+                        gid = 2 * meta.patient.to_numpy()[tr] + y[tr]
                     if name.endswith("_balanced"):
                         w = group_balance(y[tr], meta.patient.to_numpy()[tr])
                     elif name.endswith("_reweigh"):
                         w = reweigh(y[tr], meta.patient.to_numpy()[tr])
-                    pred[te] = np.mean([fit_predict(X[tr], y[tr], X[te], kind, arch, epochs, s, w) for s in range(seeds)], axis=0)
+                    pred[te] = np.mean([fit_predict(X[tr], y[tr], X[te], kind, arch, epochs, s, w, gid) for s in range(seeds)], axis=0)
                 m = meta.copy()
                 m["pred"], m["protocol"], m["arch"], m["experiment"] = pred, protocol, arch, name
                 rows.append(m)
@@ -147,7 +166,8 @@ EXPERIMENTS = {
     "rehab26_random": (lambda: D.rehab26(False), "clf", ("random",), 64),  # added for review: random split
     "irds": (D.irds, "clf", ("person", "random"), 64),
     "irds_balanced": (D.irds, "clf", ("person",), 64),  # review: group-balanced training (mitigation)
-    "irds_reweigh": (D.irds, "clf", ("person",), 64),  # review: Kamiran-Calders reweighing (label independent of group)
+    "irds_reweigh": (D.irds, "clf", ("person",), 64),  # Kamiran-Calders reweighing (label independent of group)
+    "irds_gdro": (D.irds, "clf", ("person",), 64),  # group DRO over patient status x label
     "irds_patients": (lambda: [it for it in D.irds() if it["patient"] == 1], "clf", ("person",), 64),
     "uiprmd_full": (lambda: D.uiprmd(False), "clf", ("person", "random"), 64),
     "uiprmd_lower": (lambda: D.uiprmd(True), "clf", ("person", "random"), 64),

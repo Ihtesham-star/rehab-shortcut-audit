@@ -127,29 +127,32 @@ def fig1():
 # ---------------------------------------------------------------- Fig 2
 def fig2():
     fig = plt.figure(figsize=(W2, 58 * MM))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1.3, 1.2, 1.0], wspace=0.36)
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.45, 1.05, 1.15], wspace=0.36)
     # a: IntelliRehabDS
     ax = fig.add_subplot(gs[0])
     # color = which people the model was tested on; hollow = trained on patients only (no brackets needed)
     items = [(0, get("irds", None, "person", "(patient label only)"), GRAY, "D", False),
              (1.4, get("irds", None, "person", "lstm"), BLUE, "o", False), (2.4, get("irds", None, "person", "stgcn"), BLUE, "o", False),
-             (3.8, get("irds", None, "person", "lstm", "patients only"), AQUA, "o", False),
-             (4.8, get("irds", None, "person", "stgcn", "patients only"), AQUA, "o", False),
-             (6.2, get("irds_patients", None, "person", "lstm"), AQUA, "o", True),
-             (7.2, get("irds_patients", None, "person", "stgcn"), AQUA, "o", True)]
+             (3.4, get("irds_litemv", None, "person", "litemv"), BLUE, "o", False),
+             (4.8, get("irds", None, "person", "lstm", "patients only"), AQUA, "o", False),
+             (5.8, get("irds", None, "person", "stgcn", "patients only"), AQUA, "o", False),
+             (6.8, get("irds_litemv", None, "person", "litemv", "patients only"), AQUA, "o", False),
+             (8.2, get("irds_patients", None, "person", "lstm"), AQUA, "o", True),
+             (9.2, get("irds_patients", None, "person", "stgcn"), AQUA, "o", True)]
     for x, e, c, m, hol in items:
         whisker(ax, x, e, c, m, size=20, hollow=hol)
-    for xs in (0.7, 3.1, 5.5):  # light separators between the groups
+    for xs in (0.7, 4.1, 7.5):  # light separators between the groups
         ax.axvline(xs, color="#e2e1dc", lw=0.6, zorder=0)
-    ax.set_xticks([0, 1.4, 2.4, 3.8, 4.8, 6.2, 7.2], ["Patient\nstatus", "LSTM", "ST-\nGCN", "LSTM", "ST-\nGCN", "LSTM", "ST-\nGCN"],
-                  fontsize=6)
+    ax.set_xticks([0, 1.4, 2.4, 3.4, 4.8, 5.8, 6.8, 8.2, 9.2],
+                  ["Patient status", "LSTM", "ST-GCN", "LITEMV", "LSTM", "ST-GCN", "LITEMV", "LSTM", "ST-GCN"], fontsize=5.5,
+                  rotation=45, ha="right", rotation_mode="anchor")
     ax.legend(handles=[Line2D([], [], marker="D", ls="", color=GRAY, ms=4, label="Patient status alone"),
                        Line2D([], [], marker="o", ls="", color=BLUE, ms=4, label="Tested on all participants"),
                        Line2D([], [], marker="o", ls="", color=AQUA, ms=4, label="Tested on patients only"),
                        Line2D([], [], marker="o", ls="", mfc="white", color=AQUA, ms=4, label="Trained and tested on patients only")],
               loc="lower left", bbox_to_anchor=(0.0, 0.0), fontsize=5.8, handletextpad=0.3)
-    ax.set_xlim(-0.7, 7.8)
-    ax.set_ylim(0.5, 0.95)
+    ax.set_xlim(-0.7, 9.8)
+    ax.set_ylim(0.5, 1.0)
     ax.set_ylabel("AUC")
     ax.grid(axis="x", visible=False)
     letter(ax, "a")
@@ -165,7 +168,7 @@ def fig2():
         ax.plot([i - 0.34, i + 0.34], [lab[0], lab[0]], color=GRAY, lw=1.6, solid_capstyle="butt", zorder=2)
         # grey band: 95% CI of patient status alone
         ax.add_patch(matplotlib.patches.Rectangle((i - 0.34, lab[1]), 0.68, lab[2] - lab[1], color=GRAY, alpha=0.18, lw=0, zorder=1))
-    ax.set_xticks(range(5), ["Arm\nlift", "Lateral\ntilt", "Trunk\nrotation", "Pelvis\nrotation", "Squat"], fontsize=6)
+    ax.set_xticks(range(5), ["Arm\nlift", "Lateral\ntilt", "Trunk\nrot.", "Pelvis\nrot.", "Squat"], fontsize=6)
     ax.set_ylim(0.0, 1.0)
     ax.set_ylabel("Spearman ρ with clinical score")
     ax.grid(axis="x", visible=False)
@@ -177,7 +180,7 @@ def fig2():
     # c: false alarms on correct repetitions, standard and group-balanced training
     ax = fig.add_subplot(gs[2])
     runs = [("irds", "Standard")]
-    for exp, tag in (("irds_balanced", "Balanced"), ("irds_reweigh", "Reweighed")):
+    for exp, tag in (("irds_balanced", "Balanced"), ("irds_reweigh", "Reweighed"), ("irds_gdro", "Group DRO")):
         if os.path.exists(os.path.join(OUT, "deep", exp + ".csv")):
             runs.append((exp, tag))
     fa, labels = {}, []
@@ -191,15 +194,15 @@ def fig2():
         for exp, tag in runs:
             for off, p, col in ((-0.19, 0, BLUE), (0.19, 1, ORANGE)):
                 v = fa[(exp, arch, p)]
-                ax.bar(x + off, v, 0.36, color=col, lw=0, alpha={"irds": 1.0, "irds_balanced": 0.6, "irds_reweigh": 0.35}[exp])
+                ax.bar(x + off, v, 0.36, color=col, lw=0, alpha={"irds": 1.0, "irds_balanced": 0.7, "irds_reweigh": 0.5, "irds_gdro": 0.3}[exp])
                 ax.text(x + off, v + 0.4, "%.0f" % v, ha="center", va="bottom", fontsize=5.5)
-            ticks.append((x, {"Standard": "Std.", "Balanced": "Bal.", "Reweighed": "Rew."}[tag], an))
+            ticks.append((x, {"Standard": "Std.", "Balanced": "Bal.", "Reweighed": "Rew.", "Group DRO": "DRO"}[tag], an))
             x += 1.0
         x += 0.4
-    ax.set_xticks([t for t, _, _ in ticks], [l for _, l, _ in ticks], fontsize=6)
+    ax.set_xticks([t for t, _, _ in ticks], [l for _, l, _ in ticks], fontsize=5.5, rotation=45, ha="right", rotation_mode="anchor")
     for an in ("LSTM", "ST-GCN"):
         xs = [t for t, _, a in ticks if a == an]
-        ax.text(np.mean(xs), -0.13, an, transform=ax.get_xaxis_transform(), ha="center", va="top", fontsize=6.5, color=INK2)
+        ax.text(np.mean(xs), -0.19, an, transform=ax.get_xaxis_transform(), ha="center", va="top", fontsize=6.5, color=INK2)
     ax.set_ylabel("Correct reps called incorrect (%)")
     ymax = max(fa.values())
     ax.set_ylim(0, max(22, ymax * 1.2))
