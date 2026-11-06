@@ -278,6 +278,7 @@ def fig4():
     s = pd.read_csv(os.path.join(DATA, "REHAB26-ViewAngles", "Segmentation.csv"), sep=";")
     s = s.sort_values(["exercise_id", "video_id", "person_orientation", "first_frame"])
     sets = [g.correctness_score.eq(1).astype(int).tolist() for _, g in s.groupby(["exercise_id", "video_id", "person_orientation"], sort=False)]
+    sets = sorted(sets, key=len)  # sets with 11-12 reps at the bottom, as one block
     L = max(map(len, sets))
     M = np.full((len(sets), L), np.nan)
     for i, v in enumerate(sets):

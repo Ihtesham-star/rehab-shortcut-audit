@@ -63,7 +63,7 @@ T1 = pd.DataFrame([
     ["REHAB24-6", "2024", "10 (0/10)ᵃ", "2 RGB cameras + optical mocap", "Arm abduction, arm V-W (RGB); 6 exercises (mocap)", "1,072 reps in total; we used 386 arm reps (RGB) and 1,057 reps with valid mocap", "Binary", "Deliberate", "Correct block, then incorrect block (in annotations; not stated in paper)"],
     ["REHAB26-ViewAngles", "2026", "5 (volunteers)", "3 RGB cameras (MediaPipe pose)", "Arm abduction, squat, shoulder extension", "1,665 reps (1,650 in paper); one camera view per repetition", "Binary + error type", "Deliberate", "Interleaved, but 152 of the 165 sets (all with 10 reps) follow the same order: 3 correct, 5 incorrect, 2 correct"],
     ["UI-PRMD", "2018", "10 (0/10)", "Vicon (39 markers) + Kinect", "4 shoulder movements (of 10)", "800 episodes (Vicon)", "Binary", "Deliberately non-optimal", "Correct and incorrect released as separate sets; session order not reported"],
-    ["IntelliRehabDS", "2021", "29 (15/14)ᵇ", "Kinect One (v2)", "9 upper/lower-limb gestures", "2,589 files (2,575 used: 12 unusable and 2 shorter than 16 frames removed)", "Binary (+12 unusable)", "Natural", "98% of incorrect sequences from patients"],
+    ["IntelliRehabDS", "2021", "29 (15/14)ᵇ", "Kinect One (v2)", "9 upper/lower-limb gestures", "2,589 files (2,575 used: 12 unusable and 2 shorter than 16 frames removed)", "Binary; 12 marked unusable", "Natural", "98% of incorrect sequences from patients"],
     ["KIMORE", "2019", "78 (34/44)ᶜ", "Kinect v2", "5 low-back exercises", "1 recording (5 reps) / person / exercise", "Clinical total score 10–50", "Natural", "Patients score lower, experts highest (paper Fig. 4); healthy median 42–46 vs patients 25–35"],
     ["KERAAL†", "2024", "21 (12/9)ᵈ", "Kinect v2 + RGB (+ Vicon, group 3)", "3 low-back exercises", "812 annotated recordings", "Binary + error type", "Natural (patients) + simulated (3 healthy)", "Simulating group 25% correct for every person"],
     ["UCDHE†", "2023", "52 (0/52)ᵉ", "RGB video, 2-D pose (OpenPose, 8 joints)", "Military press, rowing", "4,289 reps", "Binary (merged from 4–5 classes)", "Deliberate", "No patients; repetition order not released (control for the patient shortcut)"],
@@ -114,7 +114,7 @@ T2 = pd.DataFrame([
      ci(best("irds", None, "random"))],
     ["KIMORE (ρ)", "Patient status", rng(k_lab), rng(k_all),
      "Patients only " + rng(k_pat) + ("; partial ρ given patient status " + rng(k_part) if k_part else "") +
-     "; LITEMV (Rehab-Pile) " + rng([get("kimore_litemv", e, "person", "litemv") for e in range(1, 6)]), "n/a (1 rec./person)"],
+     "; LITEMV (Rehab-Pile) " + rng([get("kimore_litemv", e, "person", "litemv") for e in range(1, 6)]), "n/a"],
     ["KERAAL", "Recording group", rng([csvrow("shortcuts_keraal.csv", t, "group label only") for t in ("CTK", "ELK", "RTK")]) if os.path.exists(os.path.join(OUT, "shortcuts_keraal.csv")) else "0.54–0.66",
      rng([best("keraal", t) for t in ("CTK", "ELK", "RTK")]),
      "Simulating group only " + rng([best("keraal", t, "person", "simulating group only (P)") for t in ("CTK", "ELK", "RTK")]) +
